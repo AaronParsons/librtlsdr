@@ -331,6 +331,15 @@ RTLSDR_API int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on);
  */
 RTLSDR_API int rtlsdr_get_offset_tuning(rtlsdr_dev_t *dev);
 
+/*!
+ * Set fir coeffs for the down-converter
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param fir_coeffs integer array of 16 coefficients
+ * \return -1 on error, 0 success
+ */
+RTLSDR_API int rtlsdr_set_fir_coeffs(rtlsdr_dev_t *dev, const int *fir_coeffs);
+
 /* streaming functions */
 
 RTLSDR_API int rtlsdr_reset_buffer(rtlsdr_dev_t *dev);

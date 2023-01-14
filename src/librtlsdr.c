@@ -586,7 +586,7 @@ int rtlsdr_set_fir(rtlsdr_dev_t *dev)
 		if (val < -128 || val > 127) {
 			return -1;
 		}
-		fir[i] = val;
+		fir[i] = val & 0xff;  // mask to 8b
 	}
 	/* format: int12_t[8] */
 	for (i = 0; i < 8; i += 2) {
@@ -595,9 +595,9 @@ int rtlsdr_set_fir(rtlsdr_dev_t *dev)
 		if (val0 < -2048 || val0 > 2047 || val1 < -2048 || val1 > 2047) {
 			return -1;
 		}
-		fir[8+i*3/2] = val0 >> 4;
-		fir[8+i*3/2+1] = (val0 << 4) | ((val1 >> 8) & 0x0f);
-		fir[8+i*3/2+2] = val1;
+		fir[8+i*3/2] = (val0 >> 4) & 0xff;  // mask to 8b
+		fir[8+i*3/2+1] = ((val0 << 4) & 0xf0) | ((val1 >> 8) & 0x0f);
+		fir[8+i*3/2+2] = val1 & 0xff;
 	}
 
 	for (i = 0; i < (int)sizeof(fir); i++) {
@@ -606,6 +606,12 @@ int rtlsdr_set_fir(rtlsdr_dev_t *dev)
 	}
 
 	return 0;
+}
+
+int rtlsdr_set_fir_coeffs(rtlsdr_dev_t *dev, const int *fir_coeffs)
+{
+	memcpy(dev->fir, fir_coeffs, sizeof(fir_default));
+    return rtlsdr_set_fir(dev);
 }
 
 void rtlsdr_init_baseband(rtlsdr_dev_t *dev)
