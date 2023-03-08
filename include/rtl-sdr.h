@@ -82,19 +82,20 @@ RTLSDR_API int rtlsdr_set_fir(rtlsdr_dev_t *dev);
  * recent rtlsdr_set_fir() call (or initialization).
  *
  * \param dev the device handle given by rtlsdr_open().
- * \param half_fir an array of FIR_LEN integers to store the FIR LPF coefficients.
+ * \param half_fir_coeffs an array of FIR_LEN integers to store the FIR LPF coefficients.
  *        The second half is always a mirror of the first half.
  */
-RTLSDR_API int rtlsdr_get_fir_coeffs(rtlsdr_dev_t *dev, int *half_fir);
+RTLSDR_API int rtlsdr_get_fir_coeffs(rtlsdr_dev_t *dev, int *half_fir_coeffs);
 
 /*!
  * Set fir coeffs for the down-converter
  *
  * \param dev the device handle given by rtlsdr_open()
- * \param fir_coeffs integer array of 16 coefficients
+ * \param half_fir_coeffs an array of FIR_LEN integers to store the FIR LPF coefficients.
+ *        The second half is always a mirror of the first half.
  * \return -1 on error, 0 success
  */
-RTLSDR_API int rtlsdr_set_fir_coeffs(rtlsdr_dev_t *dev, const int *fir_coeffs);
+RTLSDR_API int rtlsdr_set_fir_coeffs(rtlsdr_dev_t *dev, const int *half_fir_coeffs);
 
 
 /* configuration functions */
