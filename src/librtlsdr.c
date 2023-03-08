@@ -578,8 +578,8 @@ void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
 int rtlsdr_set_fir(rtlsdr_dev_t *dev)
 {
 	uint8_t fir[20];
-
 	int i;
+
 	/* format: int8_t[8] */
 	for (i = 0; i < 8; ++i) {
 		const int val = dev->fir[i];
@@ -608,10 +608,16 @@ int rtlsdr_set_fir(rtlsdr_dev_t *dev)
 	return 0;
 }
 
-int rtlsdr_set_fir_coeffs(rtlsdr_dev_t *dev, const int *fir_coeffs)
+int rtlsdr_set_fir_coeffs(rtlsdr_dev_t *dev, const int *half_fir_coeffs)
 {
-	memcpy(dev->fir, fir_coeffs, sizeof(fir_default));
+	memcpy(dev->fir, half_fir_coeffs, sizeof(fir_default));
     return rtlsdr_set_fir(dev);
+}
+
+int rtlsdr_get_fir_coeffs(rtlsdr_dev_t *dev, int *half_fir_coeffs)
+{
+	memcpy(half_fir_coeffs, dev->fir, sizeof(fir_default));
+	return 0;
 }
 
 void rtlsdr_init_baseband(rtlsdr_dev_t *dev)
@@ -1060,10 +1066,10 @@ int rtlsdr_get_tuner_gain(rtlsdr_dev_t *dev)
 
 int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain)
 {
-	int r = 0;
+	int r = -1;
 
 	if (!dev || !dev->tuner)
-		return -1;
+		return r;
 
 	if (dev->tuner->set_if_gain) {
 		rtlsdr_set_i2c_repeater(dev, 1);
@@ -1848,6 +1854,15 @@ static int _rtlsdr_free_async_buffers(rtlsdr_dev_t *dev)
 	return 0;
 }
 
+static rtlsdr_user_idle_cb_t read_async_idle_fun;
+static void *read_async_idle_fun_data;
+
+void rtlsdr_set_async_idle_fun(rtlsdr_user_idle_cb_t idle_fun, void *idle_fun_data)
+{
+	read_async_idle_fun = idle_fun;
+	read_async_idle_fun_data = idle_fun_data;
+}
+
 int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 			  uint32_t buf_num, uint32_t buf_len)
 {
@@ -1904,6 +1919,11 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 		}
 	}
 
+	if (read_async_idle_fun) {
+		/* Force zerotv for the first call, then let idle fun set the timeout. */
+		tv = zerotv;
+	}
+
 	while (RTLSDR_INACTIVE != dev->async_status) {
 		r = libusb_handle_events_timeout_completed(dev->ctx, &tv,
 							   &dev->async_cancel);
@@ -1949,6 +1969,14 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 				libusb_handle_events_timeout_completed(dev->ctx,
 								       &zerotv, NULL);
 				break;
+			}
+		}
+
+		if (read_async_idle_fun) {
+			tv = read_async_idle_fun(read_async_idle_fun_data);
+			if (tv.tv_sec > 1) {
+				tv.tv_sec  = 1;
+				tv.tv_usec = 0;
 			}
 		}
 	}

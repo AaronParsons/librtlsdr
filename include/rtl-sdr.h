@@ -64,6 +64,39 @@ RTLSDR_API int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index);
 
 RTLSDR_API int rtlsdr_close(rtlsdr_dev_t *dev);
 
+/*!
+ * Load the FIR LPF coefficients in RTL2832 chip.
+ *
+ * \param dev the device handle given by rtlsdr_open().
+ * \param half_fir an array of FIR_LEN integers with the first half of the FIR LPF coefficients.
+ *        The second half will be the mirror of the first half.
+ * Values of the first  8 half_fir coefficients are limited to range [-128 .. 127]
+ * Values of the second 8 half_fir coefficients are limited to range [-2048 .. 2047]
+ */
+RTLSDR_API int rtlsdr_set_fir(rtlsdr_dev_t *dev);
+
+/*!
+ * Get the FIR LPF coefficients which have been loaded in the RTL2832 chip.
+ *
+ * The values are not read back from the chip, but from the buffer of the most
+ * recent rtlsdr_set_fir() call (or initialization).
+ *
+ * \param dev the device handle given by rtlsdr_open().
+ * \param half_fir an array of FIR_LEN integers to store the FIR LPF coefficients.
+ *        The second half is always a mirror of the first half.
+ */
+RTLSDR_API int rtlsdr_get_fir_coeffs(rtlsdr_dev_t *dev, int *half_fir);
+
+/*!
+ * Set fir coeffs for the down-converter
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param fir_coeffs integer array of 16 coefficients
+ * \return -1 on error, 0 success
+ */
+RTLSDR_API int rtlsdr_set_fir_coeffs(rtlsdr_dev_t *dev, const int *fir_coeffs);
+
+
 /* configuration functions */
 
 /*!
@@ -331,15 +364,6 @@ RTLSDR_API int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on);
  */
 RTLSDR_API int rtlsdr_get_offset_tuning(rtlsdr_dev_t *dev);
 
-/*!
- * Set fir coeffs for the down-converter
- *
- * \param dev the device handle given by rtlsdr_open()
- * \param fir_coeffs integer array of 16 coefficients
- * \return -1 on error, 0 success
- */
-RTLSDR_API int rtlsdr_set_fir_coeffs(rtlsdr_dev_t *dev, const int *fir_coeffs);
-
 /* streaming functions */
 
 RTLSDR_API int rtlsdr_reset_buffer(rtlsdr_dev_t *dev);
@@ -347,6 +371,24 @@ RTLSDR_API int rtlsdr_reset_buffer(rtlsdr_dev_t *dev);
 RTLSDR_API int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_read);
 
 typedef void(*rtlsdr_read_async_cb_t)(unsigned char *buf, uint32_t len, void *ctx);
+
+/*!
+ * Type for user function to be called after servicing the usb events.
+ *
+ * \return a struct timeval for the maximum sleep-time before calling it again.
+ */
+typedef struct timeval (*rtlsdr_user_idle_cb_t)(void *data);
+
+/*!
+ * Set idle function to be called after servicing the usb events (by rtlsdr_read_async()).
+ *
+ * The idle function should return a struct timeval for the maximum sleep-time before
+ * calling it again.
+ *
+ * \param idle_fun the function to be called, or NULL for none.
+ * \param idle_fun_data the data pointer to be passed to the idle function.
+ */
+RTLSDR_API void rtlsdr_set_async_idle_fun(rtlsdr_user_idle_cb_t idle_fun, void *idle_fun_data);
 
 /*!
  * Read samples from the device asynchronously. This function will block until
